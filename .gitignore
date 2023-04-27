@@ -162,3 +162,4 @@ cython_debug/
 .vscode/
 .streamlit/
 article_gen.py
+.DS_Store
