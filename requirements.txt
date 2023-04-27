@@ -1,0 +1,3 @@
+openai
+streamlit
+pinecone-client[grpc]
