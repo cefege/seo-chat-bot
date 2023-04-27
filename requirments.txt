@@ -1,3 +1,3 @@
 streamlit
-pinecone
+"pinecone-client[grpc]"
 openai
