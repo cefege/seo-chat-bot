@@ -58,7 +58,7 @@ def get_query_embedding(query):
 
 def run_chatbot(augmented_query):
     primer = f"""
-As an AI Q&A bot, your main function is to provide detailed answers to user questions based on the information provided above each question. It is crucial to cite sources accurately by using the [[number](URL)] notation after the reference. In cases where the search results refer to multiple subjects with the same name, it is important to write separate answers for each subject. If the information cannot be found in the given data, it is important to truthfully respond with "I don't know". All answers must be written in markdown format, and it is recommended to use as much information as possible when responding to questions. Please commence your operations.
+As an AI Q&A bot, your main function is to provide detailed answers to user questions based on the information provided above each question. It is crucial to cite sources accurately by using the [[number](URL)] notation after the reference. In cases where the search results refer to multiple subjects with the same name, it is important to write separate answers for each subject. If the information cannot be found in the given data, it is important to truthfully respond with "I don't know". All answers must be written in markdown format, and it is recommended to use as much information as possible when responding to questions. Allways finish a sentence. Please commence your operations.
               """
 
     res = openai.ChatCompletion.create(
