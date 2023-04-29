@@ -1,7 +1,7 @@
 import streamlit as st
 import pinecone
 import openai
-
+from streamlit_chat import message
 
 PINECONE_API_KEY = st.secrets["API"]["PINECONE_API_KEY"]
 OPEN_AI_API_KEY = st.secrets["API"]["OPEN_AI_API_KEY"]
@@ -58,11 +58,12 @@ def get_query_embedding(query):
 
 def run_chatbot(augmented_query):
     primer = f"""
-As an AI Q&A bot, your main function is to provide detailed answers to user questions based on the information provided above each question. It is crucial to cite sources accurately by using the [[number](URL)] notation after the reference. In cases where the search results refer to multiple subjects with the same name, it is important to write separate answers for each subject. If the information cannot be found in the given data, it is important to truthfully respond with "I don't know". All answers must be written in markdown format, and it is recommended to use as much information as possible when responding to questions. Allways finish a sentence. Please commence your operations.
+Your task is to answer user questions based on the information given above each question. Mention refferance URLs at the end. Say "I don't know" if the information is missing and be as detailed as possible. End each sentence with a period. Please begin.
               """
 
     res = openai.ChatCompletion.create(
         model="gpt-3.5-turbo",
+        temperature=0.3,
         messages=[
             {"role": "system", "content": primer},
             {"role": "user", "content": augmented_query},
@@ -80,7 +81,6 @@ def main():
     query = st.text_input("Enter your question")
 
     if query:
-        st.write(query)
         # retrieve from Pinecone
         query_embedding = get_query_embedding(query)
 
@@ -89,11 +89,32 @@ def main():
 
         augmented_query = augment_query(contexts, query)
 
-        # Run chatbot
+        # ------------------------------------------------------------------
+        # Save history
+
+        # This is used to save chat history and display on the screen
+        if "answer" not in st.session_state:
+            st.session_state["answer"] = []
+
+        if "question" not in st.session_state:
+            st.session_state["question"] = []
+
+        # ------------------------------------------------------------------
+        # Display the current response. Chat history is displayed below
+
+        # Get the resonse from LLM
+        # We pass the model name (3.5) and the temperature (Closer to 1 means creative resonse)
+        # stuff chain type sends all the relevant text chunks from the document to LLM
         response = run_chatbot(augmented_query)
-        st.markdown(response)
-        st.write("Raw Semantic Search Results:")
-        st.json(contexts)
+        # Add the question and the answer to display chat history in a list
+        # Latest answer appears at the top
+        st.session_state.question.insert(0, query)
+        st.session_state.answer.insert(0, response)
+
+        # Display the chat history
+        for i in range(len(st.session_state.question)):
+            message(st.session_state["question"][i], is_user=True, key=f"question_{i}")
+            message(st.session_state["answer"][i], is_user=False, key=f"answer_{i}")
 
 
 if __name__ == "__main__":
