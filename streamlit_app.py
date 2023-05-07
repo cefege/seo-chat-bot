@@ -1,10 +1,14 @@
+import datetime
 import streamlit as st
 import pinecone
 import openai
 from streamlit_chat import message
+from deta import Deta
+
 
 PINECONE_API_KEY = st.secrets["API"]["PINECONE_API_KEY"]
 OPEN_AI_API_KEY = st.secrets["API"]["OPEN_AI_API_KEY"]
+deta = Deta(st.secrets["API"]["DETA_KEY"])
 
 
 def generate_output_string(list_of_dicts):
@@ -73,6 +77,12 @@ Your task is to answer user questions based on the information given above each 
     return res["choices"][0]["message"]["content"]
 
 
+def add_to_database(query, response):
+    db = deta.Base("topical_q_a")
+    timestamp = datetime.datetime.now().strftime("%d-%m-%Y %H:%M:%S")
+    db.put({"query": query, "response": response, "timestamp": timestamp})
+
+
 def main():
     st.title("SEO Q&A Chatbot")
     st.write("Ask any question based on the given context.")
@@ -110,6 +120,8 @@ def main():
         # Latest answer appears at the top
         st.session_state.question.insert(0, query)
         st.session_state.answer.insert(0, response)
+
+        add_to_database(query, response)
 
         # Display the chat history
         for i in range(len(st.session_state.question)):

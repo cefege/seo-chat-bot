@@ -2,3 +2,4 @@ openai
 streamlit
 pinecone-client[grpc]
 streamlit-chat
+deta
