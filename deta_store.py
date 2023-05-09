@@ -30,6 +30,11 @@ def convert_timestamp_to_time(df):
     return df
 
 
+def sort_by_timestamp(df):
+    df = df.sort_values(by="timestamp", ascending=False)
+    return df
+
+
 def app():
     st.set_page_config(layout="wide")
     st.title("Data Table")
@@ -37,6 +42,7 @@ def app():
     data = check_dataframe(data)
     data = data.drop(columns=["key"])
     data = convert_timestamp_to_time(data)
+    data = sort_by_timestamp(data)
     if data is not None:
         st.dataframe(data)
         csv = data.to_csv(index=False)
