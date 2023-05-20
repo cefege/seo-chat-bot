@@ -67,7 +67,7 @@ Your task is to answer user questions based on the information given above each 
 
     res = openai.ChatCompletion.create(
         model="gpt-3.5-turbo",
-        temperature=0.3,
+        temperature=0,
         messages=[
             {"role": "system", "content": primer},
             {"role": "user", "content": augmented_query},
@@ -83,7 +83,19 @@ def add_to_database(query, response):
     db.put({"query": query, "response": response, "timestamp": timestamp})
 
 
+def hide_streamlit_header_footer():
+    hide_st_style = """
+            <style>
+            #MainMenu {visibility: hidden;}
+            footer {visibility: hidden;}
+            header {visibility: hidden;}
+            </style>
+            """
+    st.markdown(hide_st_style, unsafe_allow_html=True)
+
+
 def main():
+    hide_streamlit_header_footer()
     st.title("SEO Q&A Chatbot")
     st.write("Ask any question based on the given context.")
 
