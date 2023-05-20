@@ -103,6 +103,10 @@ def main():
     # Input field for user's question
     query = st.text_input("Enter your question")
 
+    # print markdown from case_studies.md file
+    with open("case_studies.md", "r") as f:
+        st.markdown(f.read())
+
     if query:
         # retrieve from Pinecone
         query_embedding = get_query_embedding(query)
