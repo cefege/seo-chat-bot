@@ -89,6 +89,7 @@ def hide_streamlit_header_footer():
             #MainMenu {visibility: hidden;}
             footer {visibility: hidden;}
             header {visibility: hidden;}
+            #root > div:nth-child(1) > div > div > div > div > section > div {padding-top: 0rem;}
             </style>
             """
     st.markdown(hide_st_style, unsafe_allow_html=True)
@@ -97,7 +98,7 @@ def hide_streamlit_header_footer():
 def main():
     hide_streamlit_header_footer()
     st.title("SEO Q&A Chatbot")
-    st.write("Ask any question based on the given context.")
+    st.write("Ask any question related to SEO")
 
     # Input field for user's question
     query = st.text_input("Enter your question")
