@@ -95,6 +95,12 @@ def hide_streamlit_header_footer():
     st.markdown(hide_st_style, unsafe_allow_html=True)
 
 
+def print_markdown_from_file(file_path):
+    with open(file_path, "r") as f:
+        markdown_content = f.read()
+        st.markdown(markdown_content)
+
+
 def main():
     hide_streamlit_header_footer()
     st.title("SEO Q&A Chatbot")
@@ -102,10 +108,6 @@ def main():
 
     # Input field for user's question
     query = st.text_input("Enter your question")
-
-    # print markdown from case_studies.md file
-    with open("case_studies.md", "r") as f:
-        st.markdown(f.read())
 
     if query:
         # retrieve from Pinecone
@@ -144,6 +146,7 @@ def main():
         for i in range(len(st.session_state.question)):
             message(st.session_state["question"][i], is_user=True, key=f"question_{i}")
             message(st.session_state["answer"][i], is_user=False, key=f"answer_{i}")
+    print_markdown_from_file("case_studies.md")
 
 
 if __name__ == "__main__":
