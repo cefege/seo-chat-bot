@@ -104,7 +104,10 @@ def print_markdown_from_file(file_path):
 def main():
     hide_streamlit_header_footer()
     st.title("SEO Q&A Chatbot")
-    st.write("Ask any question related to SEO")
+    st.write(
+        "“The great aim of education is not knowledge but action.” ― Herbert Spencer"
+    )
+    st.write("Ask any question related to SEO.")
 
     # Input field for user's question
     query = st.text_input("Enter your question")
