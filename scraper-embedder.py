@@ -83,7 +83,7 @@ def convert_df_to_dict(df):
     return df
 
 
-## Step 1
+# Step 1
 # df = scrape_sitemaps(sitemaps)
 # url_list_1 = convert_df_to_list(df)
 # urls = merge_url_lists(url_list_1, additional_urls)
@@ -200,78 +200,39 @@ def create_embeddings(chunks, embed_model, index, batch_size=100):
 
 ### STEP 2 Embedding and indexing
 
-
-# data = pd.read_json(
-#     "page_data.json", lines=True, orient="records", encoding="utf-8", dtype=str
-# )
-# # convert to list of dicts
-# data = data.to_dict(orient="records")
-
-# chunks = create_chunks(data)
-
-
-# init_pinecone(
-#     api_key=PINECONE_API_KEY, environment="us-west4-gcp"
-# )
-
-# create_index_if_not_exists(
-#     index_name="gpt-4-langchain-docs", dimension=1536, metric="dotproduct"
-# )
-
-# index = pinecone.GRPCIndex("gpt-4-langchain-docs")
-
-
-# create_embeddings(
-#     chunks=chunks,
-#     embed_model="text-embedding-ada-002",
-#     index=index,
-#     batch_size=100,
-# )
-
-
-# Step 3 Query Vector Database
-
-init_pinecone(api_key=PINECONE_API_KEY, environment="us-west4-gcp")
-
-index = pinecone.GRPCIndex("gpt-4-langchain-docs")
-
-query = "Based only on the above text, explain how to close gaps between different localities, query networks, and templates,"
-openai.api_key = OPEN_AI_API_KEY
-res = openai.Embedding.create(input=[query], engine="text-embedding-ada-002")
-
-# retrieve from Pinecone
-xq = res["data"][0]["embedding"]
-
-# get relevant contexts (including the questions)
-res = index.query(xq, top_k=10, include_metadata=True)
-
-# print(res)
-
-# Stept 4 : Augment Query
-
-# get list of retrieved text
-
-contexts = [item["metadata"]["text"] for item in res["matches"]]
-
-augmented_query = "\n\n---\n\n".join(contexts) + "\n\n-----\n\n" + query
-
-# print(augmented_query)
-
-# Step 5 : Query GPT-3.5
-# system message to 'prime' the model
-primer = f"""You are Q&A bot. A highly intelligent system that answers
-user questions based on the information provided by the user above
-each question. If the information can not be found in the information
-provided by the user you truthfully say "I don't know".
-"""
-
-import pprint
-
-res = openai.ChatCompletion.create(
-    model="gpt-3.5-turbo",
-    messages=[
-        {"role": "system", "content": primer},
-        {"role": "user", "content": augmented_query},
-    ],
+data = pd.read_json(
+    "page_data.json", lines=True, orient="records", encoding="utf-8", dtype=str
 )
-pprint.pprint(res["choices"][0]["message"]["content"])
+# convert to list of dicts
+data = data.to_dict(orient="records")
+
+chunks = create_chunks(data)
+
+# # save chunks to json
+# pd.DataFrame(chunks).to_json("chunks.json", orient="records", lines=True)
+
+### STEP 3 Uploading to pinecone
+
+PINECONE_INDEX_NAME = secrets["API"]["PINECONE_INDEX_NAME"]
+PINECONE_ENV = secrets["API"]["PINECONE_ENV"]
+# chunks = pd.read_json("chunks.json", lines=True, orient="records", dtype=str)
+
+print("Initializing Pinecone...")
+print(f"API key: {PINECONE_API_KEY}")
+print(f"Environment: {PINECONE_ENV}")
+print(f"Index name: {PINECONE_INDEX_NAME}")
+
+init_pinecone(api_key=PINECONE_API_KEY, environment=PINECONE_ENV)
+
+create_index_if_not_exists(
+    index_name=PINECONE_INDEX_NAME, dimension=1536, metric="dotproduct"
+)
+
+index = pinecone.GRPCIndex(PINECONE_INDEX_NAME)
+
+create_embeddings(
+    chunks=chunks,
+    embed_model="text-embedding-ada-002",
+    index=index,
+    batch_size=100,
+)
