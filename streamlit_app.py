@@ -7,6 +7,8 @@ from deta import Deta
 
 
 PINECONE_API_KEY = st.secrets["API"]["PINECONE_API_KEY"]
+PINECONE_ENV = st.secrets["API"]["PINECONE_ENV"]
+PINECONE_INDEX_NAME = st.secrets["API"]["PINECONE_INDEX_NAME"]
 OPEN_AI_API_KEY = st.secrets["API"]["OPEN_AI_API_KEY"]
 deta = Deta(st.secrets["API"]["DETA_KEY"])
 
@@ -117,7 +119,7 @@ def main():
         query_embedding = get_query_embedding(query)
 
         # get relevant contexts (including the questions)
-        contexts = get_relevant_contexts(query_embedding, index="gpt-4-langchain-docs")
+        contexts = get_relevant_contexts(query_embedding, index=PINECONE_INDEX_NAME)
 
         augmented_query = augment_query(contexts, query)
 
@@ -154,5 +156,5 @@ def main():
 
 if __name__ == "__main__":
     openai.api_key = OPEN_AI_API_KEY
-    pinecone.init(api_key=PINECONE_API_KEY, environment="us-west4-gcp")
+    pinecone.init(api_key=PINECONE_API_KEY, environment=PINECONE_ENV)
     main()
