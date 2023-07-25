@@ -1,4 +1,4 @@
 openai
-streamlit == 1.25.0
+streamlit==1.25.0
 pinecone-client[grpc]
 deta
