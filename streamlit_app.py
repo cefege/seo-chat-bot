@@ -122,7 +122,7 @@ def main():
         "“The great aim of education is not knowledge but action.” ― Herbert Spencer"
     )
 
-    # hide_streamlit_header_footer()
+    hide_streamlit_header_footer()
     display_existing_messages()
 
     query = st.chat_input("Ask any question related to SEO")
