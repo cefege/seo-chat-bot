@@ -1,4 +1,4 @@
 openai==0.27.4
 streamlit==1.24.0
 deta==1.1.0
-pinecone-client[grpc]
+pinecone-client
