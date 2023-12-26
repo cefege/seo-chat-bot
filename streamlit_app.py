@@ -64,7 +64,7 @@ def get_query_embedding(query):
 def get_relevant_contexts(query_embedding, index):
     pinecone.init(api_key=PINECONE_API_KEY, environment=PINECONE_ENV)
     index = pinecone.Index(index_name=index)
-    res = index.query(query_embedding, top_k=8, include_metadata=True)
+    res = index.query(query_embedding, top_k=6, include_metadata=True)
     # print(res)
     contexts = []
     for item in res["matches"]:
