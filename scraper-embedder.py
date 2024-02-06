@@ -1,49 +1,52 @@
 import time
 import advertools as adv
+import numpy as np
 import pandas as pd
 import tiktoken
-from langchain.text_splitter import RecursiveCharacterTextSplitter
 from uuid import uuid4
 from tqdm.auto import tqdm
-import tiktoken
-import openai
-import pinecone
+from openai import OpenAI
+from pinecone import Pinecone ,PodSpec,PineconeApiException
 import toml
+import streamlit as st
+import json
+from langchain.text_splitter import RecursiveCharacterTextSplitter
 
-# Load the secrets.toml file
-secrets = toml.load(".streamlit/secrets.toml")
 
 # Retrieve the values
-PINECONE_API_KEY = secrets["API"]["PINECONE_API_KEY"]
-OPEN_AI_API_KEY = secrets["API"]["OPEN_AI_API_KEY"]
+PINECONE_API_KEY = st.secrets["API"]["PINECONE_API_KEY"]
+OPEN_AI_API_KEY = st.secrets["API"]["OPEN_AI_API_KEY"]
+PINECONE_INDEX_NAME = st.secrets["API"]["PINECONE_INDEX_NAME"]
+PINECONE_ENV = st.secrets["API"]["PINECONE_ENV"]
+
 
 sitemaps = [
-    "https://www.seobythesea.com/post-sitemap.xml",
-    "https://www.seobythesea.com/post-sitemap2.xml",
-    "https://www.holisticseo.digital/post-sitemap1.xml",
-    "https://www.holisticseo.digital/post-sitemap2.xml",
-    "https://www.holisticseo.digital/post-sitemap3.xml",
-    "https://www.holisticseo.digital/post-sitemap4.xml",
+    "https://www.seobythesea.com/post-sitemap.xml"
+    # "https://www.seobythesea.com/post-sitemap2.xml",
+    # "https://www.holisticseo.digital/post-sitemap1.xml",
+    # "https://www.holisticseo.digital/post-sitemap2.xml",
+    # "https://www.holisticseo.digital/post-sitemap3.xml",
+    # "https://www.holisticseo.digital/post-sitemap4.xml"
 ]
 
 additional_urls = [
-    "https://www.oncrawl.com/technical-seo/importance-topical-authority-semantic-seo/",
-    "https://www.holisticseo.digital/theoretical-seo/topical-authority/",
-    "https://inlinks.net/p/case-studies/importance-of-entity-oriented-search-understanding-for-seo-beyond-strings/",
-    "https://www.oncrawl.com/technical-seo/creating-semantic-content-networks-with-query-document-templates-case-study/",
-    "https://www.holisticseo.digital/theoretical-seo/ranking/",
-    "https://www.oncrawl.com/technical-seo/multilingual-international-seo-guidelines-case-study/",
-    "https://www.holisticseo.digital/technical-seo/multilingual-seo/",
-    "https://www.oncrawl.com/technical-seo/google-core-updates-effects-problems-and-solutions-for-ymyl-sites/",
-    "https://www.oncrawl.com/technical-seo/how-to-become-a-winner-from-every-google-core-algorithm-update/",
-    "https://jetoctopus.com/importance-of-ranking-signal/",
-    "https://serpstat.com/blog/the-importance-of-technical-seo-insights-of-technical-issues-of-unibaby-project/",
-    "https://serpstat.com/blog/user-experience-authoritative-content-and-page-speed-for-organic-traffic-growth/",
-    "https://serpstat.com/blog/how-a-web-entity-can-grow-traffic-and-lose-google-core-algorithm-update-at-the-same-time/",
-    "https://www.rootandbranchgroup.com/importance-of-context-for-seo/",
-    "https://www.holisticseo.digital/python-seo/data-science/",
-    "https://www.holisticseo.digital/theoretical-seo/google-author",
-    "https://www.authoritas.com/blog/encazip-case-study/",
+    "https://www.oncrawl.com/technical-seo/importance-topical-authority-semantic-seo/"
+    # "https://www.holisticseo.digital/theoretical-seo/topical-authority/",
+    # "https://inlinks.net/p/case-studies/importance-of-entity-oriented-search-understanding-for-seo-beyond-strings/",
+    # "https://www.oncrawl.com/technical-seo/creating-semantic-content-networks-with-query-document-templates-case-study/",
+    # "https://www.holisticseo.digital/theoretical-seo/ranking/",
+    # "https://www.oncrawl.com/technical-seo/multilingual-international-seo-guidelines-case-study/",
+    # "https://www.holisticseo.digital/technical-seo/multilingual-seo/",
+    # "https://www.oncrawl.com/technical-seo/google-core-updates-effects-problems-and-solutions-for-ymyl-sites/",
+    # "https://www.oncrawl.com/technical-seo/how-to-become-a-winner-from-every-google-core-algorithm-update/",
+    # "https://jetoctopus.com/importance-of-ranking-signal/",
+    # "https://serpstat.com/blog/the-importance-of-technical-seo-insights-of-technical-issues-of-unibaby-project/",
+    # "https://serpstat.com/blog/user-experience-authoritative-content-and-page-speed-for-organic-traffic-growth/",
+    # "https://serpstat.com/blog/how-a-web-entity-can-grow-traffic-and-lose-google-core-algorithm-update-at-the-same-time/",
+    # "https://www.rootandbranchgroup.com/importance-of-context-for-seo/",
+    # "https://www.holisticseo.digital/python-seo/data-science/",
+    # "https://www.holisticseo.digital/theoretical-seo/google-author",
+    # "https://www.authoritas.com/blog/encazip-case-study/",
 ]
 
 
@@ -68,8 +71,21 @@ def merge_url_lists(url_list1, url_list2):
 def scrape_pages(url_list):
     adv.crawl(url_list, output_file="page_data.jl", follow_links=False)
     # convert jl to csv
-    df = pd.read_json("page_data.jl", lines=True)
+    data_list = []
+    with open('page_data.jl', 'r') as jl_file:
+     for line in jl_file:
+        try:
+            data = json.loads(line)
+            data_list.append(data)
+            # Process the valid JSON data here
+        except json.JSONDecodeError as e:
+            # Handle the JSON decoding error, log it, or skip the line
+            print(f"Error parsing JSON: {str(e)}")
+    
+    df=pd.DataFrame(data_list)
+    df=df.head(10)  # For testing getting only 10 results for production plz remove it 
     df = df[["url", "title", "body_text"]]
+    
     df.to_json("page_data.json", orient="records", lines=True)
     df.to_csv("page_data.csv", index=False)
     return df
@@ -84,10 +100,12 @@ def convert_df_to_dict(df):
 
 
 # Step 1
-# df = scrape_sitemaps(sitemaps)
-# url_list_1 = convert_df_to_list(df)
-# urls = merge_url_lists(url_list_1, additional_urls)
-# scrape_pages(urls)
+#df = scrape_sitemaps(sitemaps)
+#url_list_1 = convert_df_to_list(df)
+#urls = merge_url_lists(url_list_1, additional_urls)
+#scrape_pages(urls)
+scrape_pages(additional_urls)  # for testubg purpse chabged to additonal_urls instead of urls
+    
 
 
 # create the length function
@@ -97,9 +115,10 @@ def tiktoken_len(text):
     return len(tokens)
 
 
+
 def create_chunks(data):
     text_splitter = RecursiveCharacterTextSplitter(
-        chunk_size=500,
+        chunk_size=200,
         chunk_overlap=20,
         length_function=tiktoken_len,
         separators=["\n\n", "\n", " ", ""],
@@ -122,28 +141,39 @@ def create_chunks(data):
     return chunks
 
 
-def init_pinecone(api_key, environment):
-    """
-    Initializes a connection to the Pinecone service.
-
-    Args:
-        api_key (str): The API key for the Pinecone service.
-        environment (str): The environment name for the Pinecone service.
-
-    Returns:
-        None
-    """
-    pinecone.init(api_key=api_key, environment=environment)
+def init_pinecone(api_key):
+    
+    try:
+        global pc
+        pc = Pinecone(api_key=api_key)
+        print("Pinecone initialized successfully")
+    except Exception as e:
+        print(f"Error initializing Pinecone: {str(e)}")
+    
+    
 
 
 def create_index_if_not_exists(index_name, dimension, metric):
     # Check if the index already exists
-    if index_name not in pinecone.list_indexes():
-        # If the index does not exist, create a new index
-        pinecone.create_index(index_name, dimension=dimension, metric=metric)
-        print(f"Index '{index_name}' created successfully.")
-    else:
-        print(f"Index '{index_name}' already exists.")
+     
+        
+       if index_name not in pc.list_indexes().names():
+    # if does not exist, create index
+        pc.create_index(
+        index_name,
+        dimension=1536,  # dimensionality of text-embedding-ada-002
+        metric='dotproduct',
+        spec=PodSpec(
+        environment="gcp-starter"
+         )
+        )
+        while not pc.describe_index(index_name).status['ready']:
+         time.sleep(1)
+        # connect to index
+        index = pc.Index(index_name)
+        
+        print(index.describe_index_stats())
+
 
 
 def create_embeddings(chunks, embed_model, index, batch_size=100):
@@ -159,44 +189,52 @@ def create_embeddings(chunks, embed_model, index, batch_size=100):
     Returns:
         None
     """
-    # Set up OpenAI API key
-    openai.api_key = OPEN_AI_API_KEY
-
+    client = OpenAI(api_key=OPEN_AI_API_KEY)
+    
     for i in tqdm(range(0, len(chunks), batch_size)):
-        # find end of batch
-        i_end = min(len(chunks), i + batch_size)
-        meta_batch = chunks[i:i_end]
-        # get ids
-        ids_batch = [x["id"] for x in meta_batch]
-        # get texts to encode
-        texts = [x["text"] for x in meta_batch]
-        # create embeddings (try-except added to avoid RateLimitError)
-        try:
-            res = openai.Embedding.create(input=texts, engine=embed_model)
-        except:
+         i_end = min(len(chunks), i + batch_size)  # Calculate the end index of the current batch
+         meta_batch = chunks[i:i_end]
+         # get ids
+         ids_batch=meta_batch["id"].tolist()
+         # get texts
+         texts = meta_batch["text"].tolist()
+         
+         try:
+           
+            res = client.embeddings.create(input=texts, model=embed_model)
+            
+         except:
             done = False
             while not done:
                 time.sleep(5)
                 try:
-                    res = openai.Embedding.create(input=texts, engine=embed_model)
+                    res = client.embeddings.create(input=texts, model=embed_model)
                     done = True
                 except:
                     pass
-        embeds = [record["embedding"] for record in res["data"]]
-        # cleanup metadata
-        meta_batch = [
-            {
-                "title": x["title"],
-                "text": x["text"],
-                "chunk": x["chunk"],
-                "url": x["url"],
-            }
-            for x in meta_batch
-        ]
-        to_upsert = list(zip(ids_batch, embeds, meta_batch))
-        # upsert to Pinecone
-        index.upsert(vectors=to_upsert)
+         
+         # Assuming 'res' is the response from the OpenAI embeddings API call
+         embeds = res.data[0].embedding
 
+         # Convert specific columns of the DataFrame into a list of dictionaries
+         x=meta_batch
+         meta_batch = [
+            {
+                "title": x["title"].tolist(),
+                "text": x["text"].tolist(),
+                "chunk": x["chunk"].tolist(),
+                "url": x["url"].tolist(),
+            }
+            
+        ]
+        
+# Use the zip function to pair elements together and the dict constructor to create a dictionary
+        
+         to_upsert = zip(ids_batch,[embeds],meta_batch)
+         index.upsert(vectors=to_upsert)
+         print("data upserted")
+
+         
 
 ### STEP 2 Embedding and indexing
 
@@ -209,30 +247,26 @@ data = data.to_dict(orient="records")
 chunks = create_chunks(data)
 
 # # save chunks to json
-# pd.DataFrame(chunks).to_json("chunks.json", orient="records", lines=True)
+pd.DataFrame(chunks).to_json("chunks.json", orient="records", lines=True)
 
 ### STEP 3 Uploading to pinecone
 
-PINECONE_INDEX_NAME = secrets["API"]["PINECONE_INDEX_NAME"]
-PINECONE_ENV = secrets["API"]["PINECONE_ENV"]
-# chunks = pd.read_json("chunks.json", lines=True, orient="records", dtype=str)
 
-print("Initializing Pinecone...")
-print(f"API key: {PINECONE_API_KEY}")
-print(f"Environment: {PINECONE_ENV}")
-print(f"Index name: {PINECONE_INDEX_NAME}")
+chunks = pd.read_json("chunks.json", lines=True, orient="records", dtype=str)
 
-init_pinecone(api_key=PINECONE_API_KEY, environment=PINECONE_ENV)
+
+init_pinecone(api_key=PINECONE_API_KEY)
 
 create_index_if_not_exists(
     index_name=PINECONE_INDEX_NAME, dimension=1536, metric="dotproduct"
 )
 
-index = pinecone.GRPCIndex(PINECONE_INDEX_NAME)
+index = pc.Index(PINECONE_INDEX_NAME)
 
 create_embeddings(
     chunks=chunks,
-    embed_model="text-embedding-ada-002",
-    index=index,
-    batch_size=100,
+    embed_model="text-embedding-3-small",
+    index=index,    
+    batch_size=32
 )
+
