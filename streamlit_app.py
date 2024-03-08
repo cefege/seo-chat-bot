@@ -1,11 +1,12 @@
 import openai
 import streamlit as st
-import pinecone
+from pinecone import Pinecone, ServerlessSpec
 import datetime
 from deta import Deta
 
-PINECONE_API_KEY = st.secrets["API"]["PINECONE_API_KEY"]
-PINECONE_ENV = st.secrets["API"]["PINECONE_ENV"]
+# Initialize Pinecone client with the API key
+pinecone_client = Pinecone(api_key=st.secrets["API"]["PINECONE_API_KEY"])
+
 PINECONE_INDEX_NAME = st.secrets["API"]["PINECONE_INDEX_NAME"]
 openai.api_key = st.secrets["API"]["OPEN_AI_API_KEY"]
 deta = Deta(st.secrets["API"]["DETA_KEY"])
@@ -61,11 +62,20 @@ def get_query_embedding(query):
     return query_embedding
 
 
-def get_relevant_contexts(query_embedding, index):
-    pinecone.init(api_key=PINECONE_API_KEY, environment=PINECONE_ENV)
-    index = pinecone.Index(index_name=index)
+def get_relevant_contexts(query_embedding, index_name):
+    # Ensure the index exists or create it if it doesn't
+    if index_name not in pinecone_client.list_indexes().names():
+        pinecone_client.create_index(
+            name=index_name,
+            dimension=len(query_embedding),
+            metric='cosine',
+            spec=ServerlessSpec(cloud='aws', region='us-west-2')
+        )
+
+    # Connect to the existing index
+    index = pinecone_client.Index(index_name=index_name)
+    
     res = index.query(query_embedding, top_k=6, include_metadata=True)
-    # print(res)
     contexts = []
     for item in res["matches"]:
         metadata = item["metadata"]
@@ -129,7 +139,7 @@ def main():
     if query:
         add_user_message_to_session(query)
         query_embedding = get_query_embedding(query)
-        contexts = get_relevant_contexts(query_embedding, index=PINECONE_INDEX_NAME)
+        contexts = get_relevant_contexts(query_embedding, index_name=PINECONE_INDEX_NAME)
         augmented_query = augment_query(contexts, query)
         response = generate_assistant_response(augmented_query)
         add_to_database(query, response)
