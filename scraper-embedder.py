@@ -174,14 +174,14 @@ def create_embeddings(chunks, embed_model, index, batch_size=100):
         # create embeddings (try-except added to avoid RateLimitError)
         try:
             res = client.embeddings.create(input=texts, engine=embed_model)
-        except:
+        except Exception:
             done = False
             while not done:
                 time.sleep(5)
                 try:
                     res = client.embeddings.create(input=texts, engine=embed_model)
                     done = True
-                except:
+                except Exception:
                     pass
         embeds = [record["embedding"] for record in res.data]
         # cleanup metadata
