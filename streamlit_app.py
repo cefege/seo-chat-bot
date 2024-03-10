@@ -1,15 +1,20 @@
-import openai
-import streamlit as st
-from pinecone import Pinecone, ServerlessSpec
 import datetime
+
+import streamlit as st
 from deta import Deta
+from openai import OpenAI
+from pinecone import Pinecone, ServerlessSpec
 
 # Initialize Pinecone client with the API key
 pinecone_client = Pinecone(api_key=st.secrets["API"]["PINECONE_API_KEY"])
 
 PINECONE_INDEX_NAME = st.secrets["API"]["PINECONE_INDEX_NAME"]
-openai.api_key = st.secrets["API"]["OPEN_AI_API_KEY"]
+PINECONE_HOST = st.secrets["API"]["PINECONE_HOST"]
+
 deta = Deta(st.secrets["API"]["DETA_KEY"])
+
+
+client = OpenAI(api_key=st.secrets["API"]["OPEN_AI_API_KEY"])
 
 
 def display_existing_messages():
@@ -28,13 +33,13 @@ def add_user_message_to_session(prompt):
 
 
 def generate_assistant_response(augmented_query):
-    primer = f"""
+    primer = """
 Your task is to answer user questions based on the information given above each question.It is crucial to cite sources accurately by using the [[number](URL)] notation after the reference. Say "I don't know" if the information is missing and be as detailed as possible. End each sentence with a period. Please begin.
               """
     with st.chat_message("assistant"):
         message_placeholder = st.empty()
         full_response = ""
-        for response in openai.ChatCompletion.create(
+        for response in client.chat.completions.create(
             model="gpt-3.5-turbo",
             temperature=0,
             messages=[
@@ -43,7 +48,8 @@ Your task is to answer user questions based on the information given above each 
             ],
             stream=True,
         ):
-            full_response += response.choices[0].delta.get("content", "")
+            if partial_response := response.choices[0].delta.content:
+                full_response += partial_response
             message_placeholder.markdown(full_response + "▌")
         message_placeholder.markdown(full_response)
 
@@ -55,9 +61,11 @@ Your task is to answer user questions based on the information given above each 
 
 def get_query_embedding(query):
     # Embed the query using OpenAI's text-embedding-ada-002 engine
-    query_embedding = openai.Embedding.create(
-        input=[query], engine="text-embedding-ada-002"
-    )["data"][0]["embedding"]
+    query_embedding = (
+        client.embeddings.create(input=[query], model="text-embedding-ada-002")
+        .data[0]
+        .embedding
+    )
 
     return query_embedding
 
@@ -68,14 +76,17 @@ def get_relevant_contexts(query_embedding, index_name):
         pinecone_client.create_index(
             name=index_name,
             dimension=len(query_embedding),
-            metric='cosine',
-            spec=ServerlessSpec(cloud='aws', region='us-west-2')
+            metric="cosine",
+            spec=ServerlessSpec(
+                cloud="aws",
+                region="us-west-2",
+            ),
         )
 
     # Connect to the existing index
-    index = pinecone_client.Index(index_name=index_name)
-    
-    res = index.query(query_embedding, top_k=6, include_metadata=True)
+    index = pinecone_client.Index(index_name=index_name, host=PINECONE_HOST)
+
+    res = index.query(vector=query_embedding, top_k=6, include_metadata=True)
     contexts = []
     for item in res["matches"]:
         metadata = item["metadata"]
@@ -139,7 +150,9 @@ def main():
     if query:
         add_user_message_to_session(query)
         query_embedding = get_query_embedding(query)
-        contexts = get_relevant_contexts(query_embedding, index_name=PINECONE_INDEX_NAME)
+        contexts = get_relevant_contexts(
+            query_embedding, index_name=PINECONE_INDEX_NAME
+        )
         augmented_query = augment_query(contexts, query)
         response = generate_assistant_response(augmented_query)
         add_to_database(query, response)

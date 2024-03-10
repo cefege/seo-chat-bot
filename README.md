@@ -16,7 +16,7 @@ This code uses the following libraries:
 
 To install these libraries, use the following command:
 ```
-pip install streamlit pinecone openai streamlit_chat
+pip install -r requirements.txt
 ```
 
 ## Usage
