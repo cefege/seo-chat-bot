@@ -1,14 +1,14 @@
 import time
+from uuid import uuid4
+
 import advertools as adv
 import pandas as pd
-import tiktoken
-from langchain.text_splitter import RecursiveCharacterTextSplitter
-from uuid import uuid4
-from tqdm.auto import tqdm
-import tiktoken
-import openai
 import pinecone
+import tiktoken
 import toml
+from langchain.text_splitter import RecursiveCharacterTextSplitter
+from openai import OpenAI
+from tqdm.auto import tqdm
 
 # Load the secrets.toml file
 secrets = toml.load(".streamlit/secrets.toml")
@@ -16,6 +16,8 @@ secrets = toml.load(".streamlit/secrets.toml")
 # Retrieve the values
 PINECONE_API_KEY = secrets["API"]["PINECONE_API_KEY"]
 OPEN_AI_API_KEY = secrets["API"]["OPEN_AI_API_KEY"]
+
+client = OpenAI(api_key=OPEN_AI_API_KEY)
 
 sitemaps = [
     "https://www.seobythesea.com/post-sitemap.xml",
@@ -160,7 +162,6 @@ def create_embeddings(chunks, embed_model, index, batch_size=100):
         None
     """
     # Set up OpenAI API key
-    openai.api_key = OPEN_AI_API_KEY
 
     for i in tqdm(range(0, len(chunks), batch_size)):
         # find end of batch
@@ -172,17 +173,17 @@ def create_embeddings(chunks, embed_model, index, batch_size=100):
         texts = [x["text"] for x in meta_batch]
         # create embeddings (try-except added to avoid RateLimitError)
         try:
-            res = openai.Embedding.create(input=texts, engine=embed_model)
+            res = client.embeddings.create(input=texts, engine=embed_model)
         except:
             done = False
             while not done:
                 time.sleep(5)
                 try:
-                    res = openai.Embedding.create(input=texts, engine=embed_model)
+                    res = client.embeddings.create(input=texts, engine=embed_model)
                     done = True
                 except:
                     pass
-        embeds = [record["embedding"] for record in res["data"]]
+        embeds = [record["embedding"] for record in res.data]
         # cleanup metadata
         meta_batch = [
             {
