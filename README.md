@@ -1,42 +1,72 @@
 # SEO Q&A Chatbot
 
-This Python code implements a chatbot that answers questions related to SEO.  The chatbot is based on OpenAI's GPT-3.5 language model, which is a powerful and versatile natural language processing model.
-Sources used:
+> RAG-powered chatbot for Semantic SEO — retrieves knowledge from expert sources and generates grounded answers using GPT-3.5 + Pinecone.
+
+![Python](https://img.shields.io/badge/Python-3.8+-blue) ![Streamlit](https://img.shields.io/badge/Streamlit-1.x-red) ![OpenAI](https://img.shields.io/badge/OpenAI-GPT--3.5-green)
+
+## Overview
+
+A Retrieval-Augmented Generation (RAG) chatbot that answers Semantic SEO questions by searching through a curated knowledge base of expert content. Instead of relying on the model's training data, every answer is grounded in retrieved source material — reducing hallucination and ensuring accuracy.
+
+**Knowledge sources:**
 - seobythesea.com
 - holisticseo.digital
-- guest posts published by Koray Tuğberk GÜBÜR on other publications.
+- Guest posts by Koray Tugberk Gubur
 
-## Dependencies
+## Tech Stack
 
-This code uses the following libraries:
-- `streamlit`: for building the user interface.
-- `pinecone`: for retrieving relevant text chunks based on a user's question.
-- `openai`: for generating responses to user questions.
-- `streamlit_chat`: for displaying chat history in the user interface.
+`Python` · `OpenAI GPT-3.5` · `Pinecone` · `Streamlit` · `LangChain`
 
-To install these libraries, use the following command:
+## Architecture
+
 ```
+User Question
+     |
+     v
+[Embedding] --> [Pinecone Vector Search] --> Top-K Relevant Chunks
+                                                    |
+                                                    v
+                                        [Augmented Prompt + GPT-3.5]
+                                                    |
+                                                    v
+                                            Grounded Answer
+```
+
+1. **Document ingestion** — expert SEO content is chunked and embedded into Pinecone vector database
+2. **Retrieval** — user questions are embedded and matched against the knowledge base via cosine similarity
+3. **Augmented generation** — retrieved chunks are injected into the prompt as context for GPT-3.5
+4. **Response** — model generates an answer grounded in the retrieved sources
+
+## Features
+
+- **RAG pipeline** — retrieval-augmented generation with Pinecone vector search
+- **Domain-specific knowledge base** — curated expert SEO content, not generic web data
+- **Conversational UI** — Streamlit chat interface with message history
+- **Grounded answers** — responses are based on retrieved context, not model hallucination
+
+## Installation
+
+```bash
 pip install -r requirements.txt
 ```
 
 ## Usage
 
-To run this code, first set the `PINECONE_API_KEY` and `OPEN_AI_API_KEY` environment variables with your Pinecone and OpenAI API keys, respectively. You can get an OpenAI API key by creating an account on the OpenAI website.
+Set your API keys as environment variables:
 
-Then, run the following command:
+```bash
+export PINECONE_API_KEY="your-pinecone-key"
+export OPEN_AI_API_KEY="your-openai-key"
 ```
+
+Run the app:
+
+```bash
 streamlit run streamlit_app.py
 ```
 
-This will start the Streamlit server, and you can access the chatbot by opening a web browser and navigating to `http://localhost:8501`.
+Open `http://localhost:8501` and start asking SEO questions.
 
-## How it Works
+## License
 
-The chatbot works as follows:
-1. The user enters a question in the input field.
-2. The chatbot retrieves relevant text chunks based on the user's question using the Pinecone similarity search service.
-3. The chatbot adds the user's question to the retrieved text chunks to create an augmented query.
-4. The chatbot generates a response to the augmented query using OpenAI's GPT-3.5 (Chat GPT) language model.
-5. The chatbot displays the response to the user, along with the chat history.
-
-The chat history is saved in the `st.session_state` dictionary, which is a dictionary that persists across Streamlit sessions. The `message` function from the `streamlit_chat` library is used to display the chat history in the user interface.
+MIT
