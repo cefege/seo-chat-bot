@@ -3,11 +3,11 @@ from uuid import uuid4
 
 import advertools as adv
 import pandas as pd
-import pinecone
 import tiktoken
 import toml
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from openai import OpenAI
+from pinecone import Pinecone, ServerlessSpec
 from tqdm.auto import tqdm
 
 # Load the secrets.toml file
@@ -124,25 +124,29 @@ def create_chunks(data):
     return chunks
 
 
-def init_pinecone(api_key, environment):
+def init_pinecone(api_key):
     """
     Initializes a connection to the Pinecone service.
 
     Args:
         api_key (str): The API key for the Pinecone service.
-        environment (str): The environment name for the Pinecone service.
 
     Returns:
-        None
+        Pinecone: The Pinecone client instance.
     """
-    pinecone.init(api_key=api_key, environment=environment)
+    return Pinecone(api_key=api_key)
 
 
-def create_index_if_not_exists(index_name, dimension, metric):
+def create_index_if_not_exists(pc, index_name, dimension, metric):
     # Check if the index already exists
-    if index_name not in pinecone.list_indexes():
+    if index_name not in pc.list_indexes().names():
         # If the index does not exist, create a new index
-        pinecone.create_index(index_name, dimension=dimension, metric=metric)
+        pc.create_index(
+            name=index_name,
+            dimension=dimension,
+            metric=metric,
+            spec=ServerlessSpec(cloud="aws", region="us-west-2"),
+        )
         print(f"Index '{index_name}' created successfully.")
     else:
         print(f"Index '{index_name}' already exists.")
@@ -173,17 +177,17 @@ def create_embeddings(chunks, embed_model, index, batch_size=100):
         texts = [x["text"] for x in meta_batch]
         # create embeddings (try-except added to avoid RateLimitError)
         try:
-            res = client.embeddings.create(input=texts, engine=embed_model)
+            res = client.embeddings.create(input=texts, model=embed_model)
         except Exception:
             done = False
             while not done:
                 time.sleep(5)
                 try:
-                    res = client.embeddings.create(input=texts, engine=embed_model)
+                    res = client.embeddings.create(input=texts, model=embed_model)
                     done = True
                 except Exception:
                     pass
-        embeds = [record["embedding"] for record in res.data]
+        embeds = [record.embedding for record in res.data]
         # cleanup metadata
         meta_batch = [
             {
@@ -215,21 +219,18 @@ chunks = create_chunks(data)
 ### STEP 3 Uploading to pinecone
 
 PINECONE_INDEX_NAME = secrets["API"]["PINECONE_INDEX_NAME"]
-PINECONE_ENV = secrets["API"]["PINECONE_ENV"]
 # chunks = pd.read_json("chunks.json", lines=True, orient="records", dtype=str)
 
 print("Initializing Pinecone...")
-print(f"API key: {PINECONE_API_KEY}")
-print(f"Environment: {PINECONE_ENV}")
 print(f"Index name: {PINECONE_INDEX_NAME}")
 
-init_pinecone(api_key=PINECONE_API_KEY, environment=PINECONE_ENV)
+pc = init_pinecone(api_key=PINECONE_API_KEY)
 
 create_index_if_not_exists(
-    index_name=PINECONE_INDEX_NAME, dimension=1536, metric="dotproduct"
+    pc=pc, index_name=PINECONE_INDEX_NAME, dimension=1536, metric="dotproduct"
 )
 
-index = pinecone.GRPCIndex(PINECONE_INDEX_NAME)
+index = pc.Index(name=PINECONE_INDEX_NAME)
 
 create_embeddings(
     chunks=chunks,

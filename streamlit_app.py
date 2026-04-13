@@ -1,18 +1,12 @@
-import datetime
-
 import streamlit as st
-from deta import Deta
 from openai import OpenAI
-from pinecone import Pinecone, ServerlessSpec
+from pinecone import Pinecone
 
 # Initialize Pinecone client with the API key
 pinecone_client = Pinecone(api_key=st.secrets["API"]["PINECONE_API_KEY"])
 
 PINECONE_INDEX_NAME = st.secrets["API"]["PINECONE_INDEX_NAME"]
 PINECONE_HOST = st.secrets["API"]["PINECONE_HOST"]
-
-deta = Deta(st.secrets["API"]["DETA_KEY"])
-
 
 client = OpenAI(api_key=st.secrets["API"]["OPEN_AI_API_KEY"])
 
@@ -71,20 +65,7 @@ def get_query_embedding(query):
 
 
 def get_relevant_contexts(query_embedding, index_name):
-    # Ensure the index exists or create it if it doesn't
-    if index_name not in pinecone_client.list_indexes().names():
-        pinecone_client.create_index(
-            name=index_name,
-            dimension=len(query_embedding),
-            metric="cosine",
-            spec=ServerlessSpec(
-                cloud="aws",
-                region="us-west-2",
-            ),
-        )
-
-    # Connect to the existing index
-    index = pinecone_client.Index(index_name=index_name, host=PINECONE_HOST)
+    index = pinecone_client.Index(name=index_name, host=PINECONE_HOST)
 
     res = index.query(vector=query_embedding, top_k=6, include_metadata=True)
     contexts = []
@@ -113,16 +94,14 @@ def augment_query(contexts, query):
     return augmented_query
 
 
-def add_to_database(query, response):
-    db = deta.Base("topical_q_a")
-    timestamp = datetime.datetime.now().strftime("%d-%m-%Y %H:%M:%S")
-    db.put({"query": query, "response": response, "timestamp": timestamp})
+@st.cache_data
+def read_markdown_file(file_path):
+    with open(file_path, "r") as f:
+        return f.read()
 
 
 def print_markdown_from_file(file_path):
-    with open(file_path, "r") as f:
-        markdown_content = f.read()
-        st.markdown(markdown_content)
+    st.markdown(read_markdown_file(file_path))
 
 
 def hide_streamlit_header_footer():
@@ -154,8 +133,7 @@ def main():
             query_embedding, index_name=PINECONE_INDEX_NAME
         )
         augmented_query = augment_query(contexts, query)
-        response = generate_assistant_response(augmented_query)
-        add_to_database(query, response)
+        generate_assistant_response(augmented_query)
     with st.sidebar:
         print_markdown_from_file("case_studies.md")
 
