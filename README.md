@@ -270,5 +270,5 @@ MIT
 ---
 
 <p align="center">
-  Made by <a href="https://www.linkedin.com/in/mihai-mateias/">Mihai Mateias</a> with much love for my brother Koray.
+  Built by <a href="https://www.linkedin.com/in/mihai-mateias/">Mihai Mateias</a>
 </p>

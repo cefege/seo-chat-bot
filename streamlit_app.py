@@ -197,9 +197,7 @@ def main():
         st.markdown(read_markdown_file("case_studies.md"))
         st.divider()
         st.markdown(
-            "Made by [Mihai Mateias](https://www.linkedin.com/in/mihai-mateias/) "
-            "with much love for my brother Koray.",
-            help="SEO Knowledge Assistant",
+            "Built by [Mihai Mateias](https://www.linkedin.com/in/mihai-mateias/)",
         )
 
     # Display chat history
